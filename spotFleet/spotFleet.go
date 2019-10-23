@@ -16,12 +16,26 @@ const(
 
 type SpotFleet struct {
     SpotFleetRequestsOutput *ec2.DescribeSpotFleetRequestsOutput
+    Ec2Svc                  *ec2.EC2
+    Elbv2Svc                *elbv2.ELBV2          
+}
+
+// get all spot fleets
+func describeSpotFleetRequests() *ec2.DescribeSpotFleetRequestsOutput{
+    svc := ec2.New(sessionHelper.GetAwsSession())
+    input := &ec2.DescribeSpotFleetRequestsInput{}
+
+    result, err := svc.DescribeSpotFleetRequests(input)
+    errorHelper.HandleAwsError(err)
+    return result
 }
 
 // Create a new spot fleet object 
 func New() *SpotFleet {
     return &SpotFleet{
         SpotFleetRequestsOutput: describeSpotFleetRequests(),
+        Ec2Svc: ec2.New(sessionHelper.GetAwsSession()),
+        Elbv2Svc: elbv2.New(sessionHelper.GetAwsSession()),
     }
 }
 
@@ -46,15 +60,7 @@ func (fleet *SpotFleet) GetFleetTargetGroupArns (f ec2.SpotFleetRequestConfig) [
     return fleetArns
 }
 
-// get all spot fleets
-func describeSpotFleetRequests() *ec2.DescribeSpotFleetRequestsOutput{
-    svc := ec2.New(sessionHelper.GetAwsSession())
-    input := &ec2.DescribeSpotFleetRequestsInput{}
 
-    result, err := svc.DescribeSpotFleetRequests(input)
-    errorHelper.HandleAwsError(err)
-    return result
-}
 
 // get all instances in a spot fleet
 func getSpotFleetInstances (fleetId *string) *ec2.DescribeSpotFleetInstancesOutput{
@@ -85,7 +91,7 @@ func (fleet *SpotFleet) AreAllFleetInstancesHealthy(fleetId *string) bool{
 // cancel a spot fleet
 func (fleet *SpotFleet) CancelSpotFleetRequest(spotFleetRequestId *string){
     fmt.Println("Cancelling Spot Fleet request: ", *spotFleetRequestId)
-    svc := ec2.New(sessionHelper.GetAwsSession())
+    // svc := ec2.New(sessionHelper.GetAwsSession())
     input := &ec2.CancelSpotFleetRequestsInput{
         SpotFleetRequestIds: []*string{
             spotFleetRequestId,
@@ -93,7 +99,7 @@ func (fleet *SpotFleet) CancelSpotFleetRequest(spotFleetRequestId *string){
         TerminateInstances: aws.Bool(true),
     }
 
-    result, err := svc.CancelSpotFleetRequests(input)
+    result, err := fleet.Ec2Svc.CancelSpotFleetRequests(input)
     errorHelper.HandleAwsError(err)
     fmt.Println(result)
 }
@@ -101,7 +107,7 @@ func (fleet *SpotFleet) CancelSpotFleetRequest(spotFleetRequestId *string){
 // deregister an instance from a spot fleet
 func (fleet *SpotFleet) DeregisterInstanceFromTargetGroup(wg *sync.WaitGroup, instanceId *string , targetGroupArn string ){
     defer wg.Done()
-    svc := elbv2.New(sessionHelper.GetAwsSession())
+    // svc := elbv2.New(sessionHelper.GetAwsSession())
     fmt.Println("deregisteringTarget", *instanceId, targetGroupArn)
 
     input := &elbv2.DeregisterTargetsInput{
@@ -113,7 +119,7 @@ func (fleet *SpotFleet) DeregisterInstanceFromTargetGroup(wg *sync.WaitGroup, in
         },
     }
 
-    _, err := svc.DeregisterTargets(input)
+    _, err := fleet.Elbv2Svc.DeregisterTargets(input)
     if err != nil {
         fmt.Println(err.Error())
     }
