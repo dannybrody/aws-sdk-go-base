@@ -120,12 +120,28 @@ func (fleet *SpotFleet) DeregisterInstanceFromTargetGroup(wg *sync.WaitGroup, in
         fmt.Println(err.Error())
     }
 }
-func (fleet *SpotFleet) DescribeTargetGroupAttributes (targetGroupArn string ) *elbv2.DescribeTargetGroupAttributesOutput {
+
+func describeTargetGroupAttributes (targetGroupArn string ) *elbv2.DescribeTargetGroupAttributesOutput {
     input := &elbv2.DescribeTargetGroupAttributesInput{
         TargetGroupArn: aws.String(targetGroupArn),
     }
+    svc := elbv2.New(sessionHelper.GetAwsSession())
 
-    result, err := fleet.Elbv2Svc.DescribeTargetGroupAttributes(input)
+    result, err := svc.DescribeTargetGroupAttributes(input)
     errorHelper.HandleAwsError(err)
     return result
 }
+
+func (fleet *SpotFleet) getTargetGroupAttribute (attribute string, targetGroupArn string) string {
+    var result string
+    attributes := describeTargetGroupAttributes(targetGroupArn)
+    for _,v := range attributes.Attributes{
+        if *v.Key == attribute {
+            result = *v.Value
+        }
+    }
+    return result
+}
+
+
+
