@@ -132,7 +132,7 @@ func describeTargetGroupAttributes (targetGroupArn string ) *elbv2.DescribeTarge
     return result
 }
 
-func (fleet *SpotFleet) getTargetGroupAttribute (attribute string, targetGroupArn string) string {
+func (fleet *SpotFleet) GetTargetGroupAttribute (attribute string, targetGroupArn string) string {
     var result string
     attributes := describeTargetGroupAttributes(targetGroupArn)
     for _,v := range attributes.Attributes{
